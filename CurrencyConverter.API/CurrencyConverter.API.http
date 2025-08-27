@@ -1,6 +1,151 @@
-@CurrencyConverter.API_HostAddress = http://localhost:5098
+@CurrencyConverter.API_HostAddress = http://localhost:5293
+@jwt_token = 
 
-GET {{CurrencyConverter.API_HostAddress}}/weatherforecast/
+###############################################################################
+# CURRENCY CONVERTER API - 4 CORE ENDPOINTS
+# Available endpoints:
+# 1. POST /api/v1/auth/token - Generate JWT token
+# 2. POST /api/v1/conversion/convert - Convert currencies
+# 3. GET /api/v1/exchangerates/latest - Get current exchange rates
+# 4. GET /api/v1/exchangerates/range - Get historical rate ranges
+###############################################################################
+
+###############################################################################
+# 1. AUTHENTICATION - Get JWT Token
+###############################################################################
+
+### Generate JWT Token
+POST {{CurrencyConverter.API_HostAddress}}/api/v1/auth/token
+Content-Type: application/json
+
+{
+  "clientId": "test-client",
+  "clientName": "Test Client",
+  "role": "ApiUser",
+  "expirationMinutes": 60
+}
+
+###############################################################################
+# 2. CURRENCY CONVERSION (Requires Authentication)
+###############################################################################
+
+### Convert Currency (POST) - Requires JWT
+POST {{CurrencyConverter.API_HostAddress}}/api/v1/conversion/convert
+Content-Type: application/json
+Authorization: Bearer {{jwt_token}}
+
+{
+  "fromCurrency": "USD",
+  "toCurrency": "EUR",
+  "amount": 100
+}
+
+### Convert Currency - Different currencies (POST)
+POST {{CurrencyConverter.API_HostAddress}}/api/v1/conversion/convert
+Content-Type: application/json
+Authorization: Bearer {{jwt_token}}
+
+{
+  "fromCurrency": "EUR",
+  "toCurrency": "JPY",
+  "amount": 50.25
+}
+
+###############################################################################
+# 3. EXCHANGE RATES ENDPOINTS (Requires Authentication)
+###############################################################################
+
+### Get Latest Exchange Rates - USD Base
+GET {{CurrencyConverter.API_HostAddress}}/api/v1/exchangerates/latest?baseCurrency=USD
 Accept: application/json
+Authorization: Bearer {{jwt_token}}
+
+### Get Latest Exchange Rates - EUR Base
+GET {{CurrencyConverter.API_HostAddress}}/api/v1/exchangerates/latest?baseCurrency=EUR
+Accept: application/json
+Authorization: Bearer {{jwt_token}}
+
+### Get Historical Exchange Rates Range
+GET {{CurrencyConverter.API_HostAddress}}/api/v1/exchangerates/range?baseCurrency=EUR&startDate=2024-01-01&endDate=2024-01-31
+Accept: application/json
+Authorization: Bearer {{jwt_token}}
+
+### Get Historical Rates Range - USD Base with Target Currencies
+GET {{CurrencyConverter.API_HostAddress}}/api/v1/exchangerates/range?baseCurrency=USD&startDate=2024-01-15&endDate=2024-01-20&targetCurrencies=EUR,GBP,JPY
+Accept: application/json
+Authorization: Bearer {{jwt_token}}
+
+###############################################################################
+# 4. ERROR TESTING - Unauthorized Access
+###############################################################################
+
+### Try conversion without token (should return 401)
+POST {{CurrencyConverter.API_HostAddress}}/api/v1/conversion/convert
+Content-Type: application/json
+
+{
+  "fromCurrency": "USD",
+  "toCurrency": "EUR",
+  "amount": 100
+}
+
+### Try latest rates without token (should return 401)
+GET {{CurrencyConverter.API_HostAddress}}/api/v1/exchangerates/latest?baseCurrency=USD
+
+### Try range rates without token (should return 401)
+GET {{CurrencyConverter.API_HostAddress}}/api/v1/exchangerates/range?baseCurrency=EUR&startDate=2024-01-01&endDate=2024-01-31
+
+###############################################################################
+# 5. VALIDATION TESTING
+###############################################################################
+
+### Invalid currency conversion (POST)
+POST {{CurrencyConverter.API_HostAddress}}/api/v1/conversion/convert
+Content-Type: application/json
+Authorization: Bearer {{jwt_token}}
+
+{
+  "fromCurrency": "INVALID",
+  "toCurrency": "EUR",
+  "amount": 100
+}
+
+### Invalid amount (negative) - POST
+POST {{CurrencyConverter.API_HostAddress}}/api/v1/conversion/convert
+Content-Type: application/json
+Authorization: Bearer {{jwt_token}}
+
+{
+  "fromCurrency": "USD",
+  "toCurrency": "EUR",
+  "amount": -10
+}
+
+### Invalid date format for range rates
+GET {{CurrencyConverter.API_HostAddress}}/api/v1/exchangerates/range?baseCurrency=USD&startDate=invalid-date&endDate=2024-01-31
+Authorization: Bearer {{jwt_token}}
+
+### Invalid date range (start > end)
+GET {{CurrencyConverter.API_HostAddress}}/api/v1/exchangerates/range?baseCurrency=USD&startDate=2024-01-31&endDate=2024-01-01
+Authorization: Bearer {{jwt_token}}
+
+### Missing required parameters for latest rates
+GET {{CurrencyConverter.API_HostAddress}}/api/v1/exchangerates/latest
+Authorization: Bearer {{jwt_token}}
+
+###############################################################################
+# 6. RATE LIMITING TESTING
+###############################################################################
+
+### Test multiple requests to trigger rate limiting
+POST {{CurrencyConverter.API_HostAddress}}/api/v1/conversion/convert
+Content-Type: application/json
+Authorization: Bearer {{jwt_token}}
+
+{
+  "fromCurrency": "USD",
+  "toCurrency": "EUR",
+  "amount": 1
+}
 
 ###
